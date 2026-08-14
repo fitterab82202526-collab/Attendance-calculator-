@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ITI Trainee Attendance 2026-27</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;color:#17202a}
+header{background:#123b63;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:5}
+h1{font-size:20px;margin:0 0 4px}.sub{font-size:12px;opacity:.9}
+.wrap{max-width:1200px;margin:auto;padding:14px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+input,select,button{padding:9px;border:1px solid #c7ced6;border-radius:6px;background:#fff}
+button{cursor:pointer;background:#123b63;color:#fff;border-color:#123b63}
+button.secondary{background:#fff;color:#123b63}
+.card{background:#fff;border:1px solid #dde2e7;border-radius:8px;padding:12px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.stat{padding:10px;background:#f7f9fb;border-radius:7px}.stat b{display:block;font-size:20px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-bottom:1px solid #e5e8eb;padding:8px;text-align:left}
+th{background:#eef2f6;position:sticky;top:64px}.low{background:#ffe0e0!important;color:#a40000;font-weight:bold}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.day{min-height:55px;border:1px solid #d9dee3;border-radius:5px;padding:4px;font-size:11px;background:#fff}
+.day button{width:100%;padding:6px 2px;margin-top:4px;font-size:11px}.P{background:#d9f7df}.A{background:#ffdada}.L{background:#fff0b8}.H{background:#d9eaf7;color:#164a6e;font-weight:bold}
+.monthrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}.monthrow input{width:90px}
+.hidden{display:none}.muted{color:#68737d;font-size:12px}
+@media(max-width:650px){table{font-size:11px}.calendar{gap:2px}.day{min-height:48px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>SHREE S K PATEL ITI KADI (GIA-509)</h1>
+  <div class="sub">Trainee Attendance Calculator • 10 August 2026 to 31 July 2027</div>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <input id="search" placeholder="Search name / enrolment no.">
+    <select id="trade"><option value="">All Trades</option></select>
+    <select id="month"></select>
+    <button onclick="exportExcel()">Export Excel</button>
+    <button class="secondary" onclick="resetAttendance()">Reset Attendance</button>
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div class="stat">Students<b id="studentCount">0</b></div>
+      <div class="stat">Working Days<b id="workingTotal">0</b></div>
+      <div class="stat">Average Attendance<b id="avgPct">0%</b></div>
+      <div class="stat">Below 80%<b id="lowCount">0</b></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Monthly Working Days</h3>
+    <div class="muted">Set the official working-day total for each month. August and September start at 10 as requested.</div>
+    <div id="monthSettings"></div>
+  </div>
+
+  <div class="card">
+    <h3>Attendance Calendar</h3>
+    <div class="controls">
+      <select id="studentSelect"></select>
+      <button onclick="markSelected('P')">Present</button>
+      <button onclick="markSelected('A')">Absent</button>
+      <button onclick="markSelected('L')">Leave</button>
+      <button class="secondary" onclick="markSelected('')">Clear Day</button></div>
+    <div class="controls">
+      <button onclick="bulkEntry('P')">All Students Present</button>
+      <button onclick="bulkEntry('A')">All Students Absent</button>
+      <button onclick="bulkEntry('L')">All Students Leave</button>
+      <button class="secondary" onclick="bulkEntry('')">Clear All Students</button>
+    </div>
+    <div class="controls">
+      <button onclick="toggleHoliday()">Mark Selected Date Holiday</button>
+      <button class="secondary" onclick="clearHoliday()">Remove Holiday</button>
+      <span class="muted">Click a calendar date first.</span>
+    </div>
+    <div id="selectedDateLabel" class="muted"></div>
+    </div>
+    <div id="calendar" class="calendar"></div>
+  </div>
+
+  <div class="card">
+    <h3>Attendance Summary</h3>
+    <div class="muted">Students below 80% are highlighted automatically. Export respects the selected trade filter.</div>
+    <div style="overflow:auto">
+      <table><thead><tr><th>Sr No</th><th>Student Name</th><th>Enrolment No</th><th>Trade</th><th>Total Working Day</th><th>Present Day</th><th>Percentage</th></tr></thead>
+      <tbody id="summary"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+const STUDENTS = [{"sr":1,"enrolment":"509840001","session":"2026-28","trade":"Fitter","batch":"84","name":"NAITIK JAGDISHKUMAR PRAJAPATI"},{"sr":2,"enrolment":"509840003","session":"2026-28","trade":"Fitter","batch":"84","name":"MITESHKUMAR BHARATBHAI THAKOR"},{"sr":3,"enrolment":"509840005","session":"2026-28","trade":"Fitter","batch":"84","name":"KRISH SHAILESHBHAI THAKOR"},{"sr":4,"enrolment":"509840007","session":"2026-28","trade":"Fitter","batch":"84","name":"NAITIKJI AJMALJI THAKOR"},{"sr":5,"enrolment":"509840008","session":"2026-28","trade":"Fitter","batch":"84","name":"MOHIT MUKESHJI THAKOR"},{"sr":6,"enrolment":"509840009","session":"2026-28","trade":"Fitter","batch":"84","name":"HARSHNILSINH HARSADSINH DARBAR"},{"sr":7,"enrolment":"509840010","session":"2026-28","trade":"Fitter","batch":"84","name":"DIPAK CHHAGANBHAI MAKVANA"},{"sr":8,"enrolment":"509840012","session":"2026-28","trade":"Fitter","batch":"84","name":"HENIL SHAILESHKUMAR PATEL"},{"sr":9,"enrolment":"509840022","session":"2026-28","trade":"Fitter","batch":"84","name":"RIDHAMKUMAR MAHESHBHAI PATEL"},{"sr":10,"enrolment":"509840025","session":"2026-28","trade":"Fitter","batch":"84","name":"SMIT BHAVINKUMAR PATEL"},{"sr":11,"enrolment":"509840027","session":"2026-28","trade":"Fitter","batch":"84","name":"DASHRIL KANUJI THAKOR"},{"sr":12,"enrolment":"509840029","session":"2026-28","trade":"Fitter","batch":"84","name":"ADARSHKUMAR ASHOKKUMAR THAKOR"},{"sr":13,"enrolment":"509840032","session":"2026-28","trade":"Fitter","batch":"84","name":"TUSHARBHAI MAHESHBHAI THAKOR"},{"sr":14,"enrolment":"509840042","session":"2026-28","trade":"Fitter","batch":"84","name":"ARUNBHAI BABUBHAI RAVAL"},{"sr":15,"enrolment":"509840045","session":"2026-28","trade":"Fitter","batch":"84","name":"VIRENKUMAR SHAILESHBHAI SENMA"},{"sr":16,"enrolment":"509840047","session":"2026-28","trade":"Fitter","batch":"84","name":"SANDIP KESHABHAI BAJANIYA"},{"sr":17,"enrolment":"509840048","session":"2026-28","trade":"Fitter","batch":"84","name":"KRISHNA KIRITBHAI PATEL"},{"sr":18,"enrolment":"509840054","session":"2026-28","trade":"Fitter","batch":"84","name":"MITESHKUMAR DASHARATHBHAI SADHU"},{"sr":19,"enrolment":"509840055","session":"2026-28","trade":"Fitter","batch":"84","name":"MAHIRKUMAR TARUNBHAI PARMAR"},{"sr":20,"enrolment":"509840061","session":"2026-28","trade":"Fitter","batch":"84","name":"NAITIKBHAI KAMABHAI RATHOD"},{"sr":21,"enrolment":"509840064","session":"2026-28","trade":"Fitter","batch":"84","name":"SUHAGJI BHARATJI THAKOR"},{"sr":22,"enrolment":"509840070","session":"2026-28","trade":"Fitter","batch":"84","name":"RAJDIP RAMESHBHAI CHAVDA"},{"sr":23,"enrolment":"509840072","session":"2026-28","trade":"Fitter","batch":"84","name":"JAYDEEPKUMAR CHUNILAL RAVAL"},{"sr":24,"enrolment":"509840074","session":"2026-28","trade":"Fitter","batch":"84","name":"BHAVIK VINODBHAI THAKOR"},{"sr":25,"enrolment":"509840086","session":"2026-28","trade":"Fitter","batch":"84","name":"PIYUSH NATVARBHAI PARMAR"},{"sr":26,"enrolment":"509840097","session":"2026-28","trade":"Fitter","batch":"84","name":"RAHUL RAJUJI THAKOR"},{"sr":27,"enrolment":"509840100","session":"2026-28","trade":"Fitter","batch":"84","name":"ROHAN JITENDRABHAI SENAMA"},{"sr":28,"enrolment":"509840101","session":"2026-28","trade":"Fitter","batch":"84","name":"MOHAMMADHUSEN AMZADHUSEN PATEL"},{"sr":29,"enrolment":"509840103","session":"2026-28","trade":"Fitter","batch":"84","name":"SAMIRBHAI CHANDUJI THAKOR"},{"sr":30,"enrolment":"509840104","session":"2026-28","trade":"Fitter","batch":"84","name":"CHIRAGKUMAR BALDEVBHAI SHRIMALI"},{"sr":31,"enrolment":"509840106","session":"2026-28","trade":"Fitter","batch":"84","name":"DHVANIT ASHOKBHAI SUTHAR"},{"sr":32,"enrolment":"509840115","session":"2026-28","trade":"Fitter","batch":"84","name":"KARANKUMAR MADHUBHAI THAKOR"},{"sr":33,"enrolment":"509840120","session":"2026-28","trade":"Fitter","batch":"84","name":"ANKESHKUMAR MERUJI THAKOR"},{"sr":34,"enrolment":"509840121","session":"2026-28","trade":"Fitter","batch":"84","name":"SURESH BHARATJI THAKOR"},{"sr":35,"enrolment":"509840131","session":"2026-28","trade":"Fitter","batch":"84","name":"RAJESH PUNAJI THAKOR"},{"sr":36,"enrolment":"509840133","session":"2026-28","trade":"Fitter","batch":"84","name":"JAIMIN VIKRAMBHAI RAVAL"},{"sr":37,"enrolment":"509840134","session":"2026-28","trade":"Fitter","batch":"84","name":"ALPESH ARAJANJI THAKOR"},{"sr":38,"enrolment":"509840135","session":"2026-28","trade":"Fitter","batch":"84","name":"AKRAMBHAI HAIDARBHAI SIPAI"},{"sr":39,"enrolment":"509840142","session":"2026-28","trade":"Fitter","batch":"84","name":"VIRALBHAI DEVARAJBHAI DESAI"},{"sr":40,"enrolment":"509840148","session":"2026-28","trade":"Fitter","batch":"84","name":"BHAVIKKUMAR KIRANSINH THAKOR"},{"sr":41,"enrolment":"509840065","session":"2026-28","trade":"Electrician","batch":"84","name":"VISHALKUMAR PRAVINBHAI BALAT"},{"sr":42,"enrolment":"509840078","session":"2026-28","trade":"Electrician","batch":"84","name":"RAHULKUMAR NATUBHAI RAVAL"},{"sr":43,"enrolment":"509840083","session":"2026-28","trade":"Electrician","batch":"84","name":"VIKRAMKUMAR PRUTHVIRAJ THAKOR"},{"sr":44,"enrolment":"509840040","session":"2026-28","trade":"Electrician","batch":"84","name":"KRUSHN DILIPBHAI PATEL"},{"sr":45,"enrolment":"509840002","session":"2026-28","trade":"Electrician","batch":"84","name":"KRISH RAJENDRAKUMAR PATEL"},{"sr":46,"enrolment":"509840016","session":"2026-28","trade":"Electrician","batch":"84","name":"MITULKUMAR TEJASBHAI THAKOR"},{"sr":47,"enrolment":"509840014","session":"2026-28","trade":"Electrician","batch":"84","name":"VRAJ MANISHKUMAR PRAJAPATI"},{"sr":48,"enrolment":"509840011","session":"2026-28","trade":"Electrician","batch":"84","name":"PARAMVIR AJITSINH VAGHELA"},{"sr":49,"enrolment":"509840119","session":"2026-28","trade":"Electrician","batch":"84","name":"VED AMITKUMAR PATEL"},{"sr":50,"enrolment":"509840126","session":"2026-28","trade":"Electrician","batch":"84","name":"IRFAN ABDULBHAI BALOCH"},{"sr":51,"enrolment":"509840153","session":"2026-28","trade":"Electrician","batch":"84","name":"SHUBHAM DINESHKUMAR SUTHAR"},{"sr":52,"enrolment":"509840109","session":"2026-28","trade":"Electrician","batch":"84","name":"SUMITBHAI KANUJI THAKOR"},{"sr":53,"enrolment":"509840026","session":"2026-28","trade":"Electrician","batch":"84","name":"TUSHAR MAHESHBHAI MAKWANA"},{"sr":54,"enrolment":"509840039","session":"2026-28","trade":"Electrician","batch":"84","name":"VIVEK DHARMENDRAKUMAR THAKOR"},{"sr":55,"enrolment":"509840038","session":"2026-28","trade":"Electrician","batch":"84","name":"NIRMALSINH MAHIPATSINH ZALA"},{"sr":56,"enrolment":"509840035","session":"2026-28","trade":"Electrician","batch":"84","name":"NILESH VINODJI THAKOR"},{"sr":57,"enrolment":"509840084","session":"2026-28","trade":"Electrician","batch":"84","name":"JAYESHBHAI GOVINDBHAI RAVAL"},{"sr":58,"enrolment":"509840107","session":"2026-28","trade":"Electrician","batch":"84","name":"DILIPJI DASHRATHJI THAKOR"},{"sr":59,"enrolment":"509840090","session":"2026-28","trade":"Electrician","batch":"84","name":"UJASHKUMAR ANILBHAI BALAT"},{"sr":60,"enrolment":"509840089","session":"2026-28","trade":"Electrician","batch":"84","name":"ASHISHKUMAR PRAVINBHAI BALAT"},{"sr":61,"enrolment":"509840030","session":"2026-28","trade":"Wireman","batch":"84","name":"KAUSHIKBHAI AMARATBHAI RAVAL"},{"sr":62,"enrolment":"509840019","session":"2026-28","trade":"Wireman","batch":"84","name":"JAYESHBHAI JITENDRABHAI THAKOR"},{"sr":63,"enrolment":"509840020","session":"2026-28","trade":"Wireman","batch":"84","name":"RUTIKBHAI RAJESHBHAI THAKOR"},{"sr":64,"enrolment":"509840004","session":"2026-28","trade":"Wireman","batch":"84","name":"TUSHARKUMAR NARENDRABHAI THAKOR"},{"sr":65,"enrolment":"509840021","session":"2026-28","trade":"Wireman","batch":"84","name":"ASHISH RAJESHJI THAKOR"},{"sr":66,"enrolment":"509840028","session":"2026-28","trade":"Wireman","batch":"84","name":"HETKUMAR ALPESHBHAI PRAJAPATI"},{"sr":67,"enrolment":"509840024","session":"2026-28","trade":"Wireman","batch":"84","name":"HARSH CHIMANBHAI SOLANKI"},{"sr":68,"enrolment":"509840013","session":"2026-28","trade":"Wireman","batch":"84","name":"YUG CHHANAJI THAKOR"},{"sr":69,"enrolment":"509840023","session":"2026-28","trade":"Wireman","batch":"84","name":"JAYDIP JAYMALJI THAKOR"},{"sr":70,"enrolment":"509840141","session":"2026-28","trade":"Wireman","batch":"84","name":"NARENDRA DILIPBHAI DANTANI"},{"sr":71,"enrolment":"509840140","session":"2026-28","trade":"Wireman","batch":"84","name":"ANIL ASHOKJI THAKOR"},{"sr":72,"enrolment":"509840137","session":"2026-28","trade":"Wireman","batch":"84","name":"MEHULJI FULAJI THAKOR"},{"sr":73,"enrolment":"509840136","session":"2026-28","trade":"Wireman","batch":"84","name":"RAHULKUMAR NAVGHANJI THAKOR"},{"sr":74,"enrolment":"509840127","session":"2026-28","trade":"Wireman","batch":"84","name":"VISHALKUMAR NATUJI THAKOR"},{"sr":75,"enrolment":"509840123","session":"2026-28","trade":"Wireman","batch":"84","name":"MAHOBATSANG POPATJI THAKOR"},{"sr":76,"enrolment":"509840110","session":"2026-28","trade":"Wireman","batch":"84","name":"ASHIKJI SURESHJI THAKOR"},{"sr":77,"enrolment":"509840108","session":"2026-28","trade":"Wireman","batch":"84","name":"PARTH BHARATBHAI PRAJAPATI"},{"sr":78,"enrolment":"509840105","session":"2026-28","trade":"Wireman","batch":"84","name":"VISHAL RAJUJI THAKOR"},{"sr":79,"enrolment":"509840102","session":"2026-28","trade":"Wireman","batch":"84","name":"JAY SURESHBHAI NADIYA"},{"sr":80,"enrolment":"509840098","session":"2026-28","trade":"Wireman","batch":"84","name":"DISHANTPURI KALPESHPURI GOSWAMI"},{"sr":81,"enrolment":"509840094","session":"2026-28","trade":"Wireman","batch":"84","name":"HARSH JAGDISHBAI PATEL"},{"sr":82,"enrolment":"509840092","session":"2026-28","trade":"Wireman","batch":"84","name":"JIGNESH ASHOKBHAI CHAVDA"},{"sr":83,"enrolment":"509840088","session":"2026-28","trade":"Wireman","batch":"84","name":"NIRAV JASHVANTBHAI VAGHELA"},{"sr":84,"enrolment":"509840085","session":"2026-28","trade":"Wireman","batch":"84","name":"JABARAJI BABUJI THAKOR"},{"sr":85,"enrolment":"509840081","session":"2026-28","trade":"Wireman","batch":"84","name":"DHRUPALSINH JAGDISHSINH ZALA"},{"sr":86,"enrolment":"509840080","session":"2026-28","trade":"Wireman","batch":"84","name":"RAVIBHAI PUNAMBHAI SENVA"},{"sr":87,"enrolment":"509840077","session":"2026-28","trade":"Wireman","batch":"84","name":"SUJAL BALDEVJI THAKOR"},{"sr":88,"enrolment":"509840073","session":"2026-28","trade":"Wireman","batch":"84","name":"JAYRAJSINH BALVANTSINH GOHIL"},{"sr":89,"enrolment":"509840071","session":"2026-28","trade":"Wireman","batch":"84","name":"RAVINDRA DEVAJI THAKOR"},{"sr":90,"enrolment":"509840051","session":"2026-28","trade":"Wireman","batch":"84","name":"KETUL VISHNUBHAI PATEL"},{"sr":91,"enrolment":"509840044","session":"2026-28","trade":"Wireman","batch":"84","name":"NEEL CHETANBHAI PATEL"},{"sr":92,"enrolment":"509840043","session":"2026-28","trade":"Wireman","batch":"84","name":"HITEN RAMABHAI SENMA"},{"sr":93,"enrolment":"509840037","session":"2026-28","trade":"Wireman","batch":"84","name":"GAUTAMBHAI GANPATBHAI THAKOR"},{"sr":94,"enrolment":"509840036","session":"2026-28","trade":"Wireman","batch":"84","name":"JAGDISHSINH NANUBHA ZALA"},{"sr":95,"enrolment":"509840034","session":"2026-28","trade":"Wireman","batch":"84","name":"MEET PRAVINBHAI VAGHELA"},{"sr":96,"enrolment":"509840031","session":"2026-28","trade":"Wireman","batch":"84","name":"JAYESHBHAI MAHESHBHAI THAKOR"},{"sr":97,"enrolment":"509840154","session":"2026-28","trade":"Wireman","batch":"84","name":"ANANDKUMAR DIPAKBHAI THAKOR"},{"sr":98,"enrolment":"509840157","session":"2026-28","trade":"Wireman","batch":"84","name":"PRATIKSINH VISHNUJI PARMAR"},{"sr":99,"enrolment":"509840156","session":"2026-28","trade":"Wireman","batch":"84","name":"MEHULJI AMARATJI THAKOR"},{"sr":100,"enrolment":"509840155","session":"2026-28","trade":"Wireman","batch":"84","name":"MEET RAVAJIBHAI RAVAL"},{"sr":101,"enrolment":"509840112","session":"2026-27","trade":"COPA","batch":"84","name":"NIKHIL PUNNULAL MEHRA"},{"sr":102,"enrolment":"509840138","session":"2026-27","trade":"COPA","batch":"84","name":"GAMBHIRSINH SIDDHARAJSINH SOLANKI"},{"sr":103,"enrolment":"509840132","session":"2026-27","trade":"COPA","batch":"84","name":"DRASHTI SURESHBHAI VAGHELA"},{"sr":104,"enrolment":"509840130","session":"2026-27","trade":"COPA","batch":"84","name":"JEMISH KANUBHAI KHARADI"},{"sr":105,"enrolment":"509840149","session":"2026-27","trade":"COPA","batch":"84","name":"YASH GABHUBHAI RABARI"},{"sr":106,"enrolment":"509840147","session":"2026-27","trade":"COPA","batch":"84","name":"DHRUVIN HARESHBHAI DARJI"},{"sr":107,"enrolment":"509840144","session":"2026-27","trade":"COPA","batch":"84","name":"KHUSHALJI BALDEVJI THAKOR"},{"sr":108,"enrolment":"509840143","session":"2026-27","trade":"COPA","batch":"84","name":"MANISHBHAI RANJITBHAI PARMAR"},{"sr":109,"enrolment":"509840139","session":"2026-27","trade":"COPA","batch":"84","name":"DHAVAL GABHUBHAI RABARI"},{"sr":110,"enrolment":"509840057","session":"2026-27","trade":"COPA","batch":"84","name":"DIVYABEN KIRTISANG THAKOR"},{"sr":111,"enrolment":"509840056","session":"2026-27","trade":"COPA","batch":"84","name":"HARSHITKUMAR KIRTIKUMAR THAKOR"},{"sr":112,"enrolment":"509840053","session":"2026-27","trade":"COPA","batch":"84","name":"YUVRAJSINH PRAVINSINH SOLANKI"},{"sr":113,"enrolment":"509840015","session":"2026-27","trade":"COPA","batch":"84","name":"SAHID ANVARBHAI SIPAI"},{"sr":114,"enrolment":"509840033","session":"2026-27","trade":"COPA","batch":"84","name":"HIMESHGIRI CHETANGIRI GOSWAMI"},{"sr":115,"enrolment":"509840018","session":"2026-27","trade":"COPA","batch":"84","name":"PRACHIBEN PRAKASHBHAI PATEL"},{"sr":116,"enrolment":"509840017","session":"2026-27","trade":"COPA","batch":"84","name":"ANKESH GOVINDJI THAKOR"},{"sr":117,"enrolment":"509840041","session":"2026-27","trade":"COPA","batch":"84","name":"MILAN VIKRAMKUMAR RAVAL"},{"sr":118,"enrolment":"509840050","session":"2026-27","trade":"COPA","batch":"84","name":"DEVARSH DIPAKKUMAR DASADIYA"},{"sr":119,"enrolment":"509840049","session":"2026-27","trade":"COPA","batch":"84","name":"BHAVESH KALUJI THAKOR"},{"sr":120,"enrolment":"509840046","session":"2026-27","trade":"COPA","batch":"84","name":"KEYUR BABULAL JOSHI"},{"sr":121,"enrolment":"509840129","session":"2026-27","trade":"COPA","batch":"84","name":"ANSHKUMAR VIPULJI THAKOR"},{"sr":122,"enrolment":"509840128","session":"2026-27","trade":"COPA","batch":"84","name":"VISHAL MAHESHJI THAKOR"},{"sr":123,"enrolment":"509840125","session":"2026-27","trade":"COPA","batch":"84","name":"PRADIPSINH TEJUBHA ZALA"},{"sr":124,"enrolment":"509840058","session":"2026-27","trade":"COPA","batch":"84","name":"ANJALIBEN AJITJI THAKOR"},{"sr":125,"enrolment":"509840052","session":"2026-27","trade":"COPA","batch":"84","name":"DHRUVBHAI KAMLESHBHAI VALAND"},{"sr":126,"enrolment":"509840059","session":"2026-27","trade":"COPA","batch":"84","name":"AADITYA MANGALSINGH JAYSWAL"},{"sr":127,"enrolment":"509840062","session":"2026-27","trade":"COPA","batch":"84","name":"SIDDHARTHKUMAR SHAILESHBHAI PARMAR"},{"sr":128,"enrolment":"509840060","session":"2026-27","trade":"COPA","batch":"84","name":"AKIBBHAI AKBARBHAI MALEK"},{"sr":129,"enrolment":"509840113","session":"2026-27","trade":"COPA","batch":"84","name":"RAMVRIKSH PARSHURAM CHAURASIYA"},{"sr":130,"enrolment":"509840114","session":"2026-27","trade":"COPA","batch":"84","name":"ANANDKUMAR DINESHBHAI MAKAVANA"},{"sr":131,"enrolment":"509840117","session":"2026-27","trade":"COPA","batch":"84","name":"VAISHALIBEN RASHIKJI THAKOR"},{"sr":132,"enrolment":"509840118","session":"2026-27","trade":"COPA","batch":"84","name":"BHOOMIKABEN NARENDRAKUMAR BAROT"},{"sr":133,"enrolment":"509840122","session":"2026-27","trade":"COPA","batch":"84","name":"BAKULBHAI AJITBHAI THAKOR"},{"sr":134,"enrolment":"509840067","session":"2026-27","trade":"COPA","batch":"84","name":"VIPULKUMAR PRAHLADJI THAKOR"},{"sr":135,"enrolment":"509840068","session":"2026-27","trade":"COPA","batch":"84","name":"MEHULBHAI MAHESHBHAI VAGHRI"},{"sr":136,"enrolment":"509840069","session":"2026-27","trade":"COPA","batch":"84","name":"UTTAM VELABHAI RAVAL"},{"sr":137,"enrolment":"509840076","session":"2026-27","trade":"COPA","batch":"84","name":"MEET VIKRAMJI THAKOR"},{"sr":138,"enrolment":"509840079","session":"2026-27","trade":"COPA","batch":"84","name":"UMANGKUMAR MAHESHBHAI THAKOR"},{"sr":139,"enrolment":"509840091","session":"2026-27","trade":"COPA","batch":"84","name":"DHAIRY SANJAYKUMAR RAVAL"},{"sr":140,"enrolment":"509840152","session":"2026-27","trade":"COPA","batch":"84","name":"SAHILJI BABUJI THAKOR"},{"sr":141,"enrolment":"509840066","session":"2026-27","trade":"COPA","batch":"84","name":"VIRAL RAMESHBHAI VALAND"},{"sr":142,"enrolment":"509840151","session":"2026-27","trade":"COPA","batch":"84","name":"RAHULJI VIKRAMJI THAKOR"},{"sr":143,"enrolment":"509840150","session":"2026-27","trade":"COPA","batch":"84","name":"AJAYBHAI KANUBHAI THAKOR"},{"sr":144,"enrolment":"509840063","session":"2026-27","trade":"COPA","batch":"84","name":"NIKHILSINH PRAVINSINH SOLANKI"},{"sr":145,"enrolment":"509840096","session":"2026-27","trade":"COPA","batch":"84","name":"MOHAMMAD ANASH FIROJ SHAH FAKIR"},{"sr":146,"enrolment":"509840099","session":"2026-27","trade":"COPA","batch":"84","name":"URVASHIBEN JASHVANTBHAI SHRIMALI"},{"sr":147,"enrolment":"509840111","session":"2026-27","trade":"COPA","batch":"84","name":"DIVYA MAHESHBHAI RAVAL"},{"sr":148,"enrolment":"509840093","session":"2026-27","trade":"COPA","batch":"84","name":"RAKESH MAHESHBHAI DANTANI"},{"sr":149,"enrolment":"509840145","session":"2026-27","trade":"PPO","batch":"84","name":"PRAKASHKUMAR RATILAL SALAT"},{"sr":150,"enrolment":"509840124","session":"2026-27","trade":"PPO","batch":"84","name":"KRISKUMAR DILIPKUMAR THAKOR"},{"sr":151,"enrolment":"509840116","session":"2026-27","trade":"PPO","batch":"84","name":"MEHUL GANPATJI THAKOR"},{"sr":152,"enrolment":"509840006","session":"2026-27","trade":"PPO","batch":"84","name":"SHUBHAM ASHOKBHAI RAVAL"},{"sr":153,"enrolment":"509840159","session":"2026-27","trade":"PPO","batch":"84","name":"SUMAN GOVINDJI THAKOR"},{"sr":154,"enrolment":"509840158","session":"2026-27","trade":"PPO","batch":"84","name":"RAVIKUMAR MAHENDRAJI THAKOR"},{"sr":155,"enrolment":"509840146","session":"2026-27","trade":"PPO","batch":"84","name":"ANSH ASHOKKUMAR PATEL"},{"sr":156,"enrolment":"509840095","session":"2026-27","trade":"PPO","batch":"84","name":"GAURAV MAVJIBHAI DESAI"},{"sr":157,"enrolment":"509840087","session":"2026-27","trade":"PPO","batch":"84","name":"NIRAVKUMAR GIRISHBHAI PARMAR"},{"sr":158,"enrolment":"509840082","session":"2026-27","trade":"PPO","batch":"84","name":"PIYUSHKUMAR ISHVARBHAI SOLANKI"},{"sr":159,"enrolment":"509840075","session":"2026-27","trade":"PPO","batch":"84","name":"GAFUL KARAMANBHAI RABARI"}];
+const START = new Date('2026-08-10T00:00:00');
+const END = new Date('2027-07-31T00:00:00');
+const STORE='iti_attendance_2026_27_v1';
+const MONTHS=[];
+let attendance=JSON.parse(localStorage.getItem(STORE)||'{}');
+let holidays=JSON.parse(localStorage.getItem(STORE+'_holidays')||'{}');
+
+function keyMonth(d){return d.toISOString().slice(0,7)}
+function monthLabel(k){return new Date(k+'-01T00:00:00').toLocaleString('en-IN',{month:'long',year:'numeric'})}
+function buildMonths(){
+  let d=new Date(START.getFullYear(),START.getMonth(),1);
+  const end=new Date(END.getFullYear(),END.getMonth(),1);
+  while(d<=end){MONTHS.push(d.toISOString().slice(0,7));d.setMonth(d.getMonth()+1)}
+}
+buildMonths();
+
+let workingDays=JSON.parse(localStorage.getItem(STORE+'_working')||'{}');
+MONTHS.forEach((m,i)=>{if(workingDays[m]==null)workingDays[m]=(m==='2026-08'||m==='2026-09')?10:0});
+function save(){localStorage.setItem(STORE,JSON.stringify(attendance));localStorage.setItem(STORE+'_working',JSON.stringify(workingDays));localStorage.setItem(STORE+'_holidays',JSON.stringify(holidays))}
+
+const tradeSel=document.getElementById('trade');
+[...new Set(STUDENTS.map(s=>s.trade).filter(Boolean))].sort().forEach(t=>tradeSel.add(new Option(t,t)));
+const monthSel=document.getElementById('month');
+MONTHS.forEach(m=>monthSel.add(new Option(monthLabel(m),m)));
+monthSel.value='2026-08';
+
+function renderMonthSettings(){
+  document.getElementById('monthSettings').innerHTML=MONTHS.map(m=>`
+    <div class="monthrow"><b style="min-width:150px">${monthLabel(m)}</b>
+    <label>Working days <input type="number" min="0" max="31" value="${workingDays[m]}" onchange="workingDays['${m}']=+this.value||0;save();render()"></label></div>`).join('');
+}
+function filtered(){
+  const q=document.getElementById('search').value.toLowerCase().trim(),t=tradeSel.value;
+  return STUDENTS.filter(s=>(!t||s.trade===t)&&(!q||s.name.toLowerCase().includes(q)||s.enrolment.toLowerCase().includes(q)));
+}
+function totals(s){
+  let present=0,working=MONTHS.reduce((a,m)=>a+(+workingDays[m]||0),0);
+  working-=Object.keys(holidays).filter(d=>MONTHS.includes(d.slice(0,7))).length;
+  for(const d of Object.keys(attendance[s.enrolment]||{}))if(attendance[s.enrolment][d]==='P'&&!holidays[d])present++;
+  return {working:Math.max(0,working),present,pct:working?present/working*100:0};
+}
+function renderSummary(){
+  const rows=filtered(), body=document.getElementById('summary');
+  body.innerHTML=rows.map((s,i)=>{const x=totals(s);return `<tr class="${x.pct<80?'low':''}">
+  <td>${i+1}</td><td>${esc(s.name)}</td><td>${esc(s.enrolment)}</td><td>${esc(s.trade)}</td>
+  <td>${x.working}</td><td>${x.present}</td><td>${x.pct.toFixed(2)}%</td></tr>`}).join('');
+  document.getElementById('studentCount').textContent=rows.length;
+  const wt=MONTHS.reduce((a,m)=>a+Math.max(0,(+workingDays[m]||0)-Object.keys(holidays).filter(d=>d.startsWith(m)).length),0); document.getElementById('workingTotal').textContent=wt;
+  const ps=rows.map(s=>totals(s).pct); document.getElementById('avgPct').textContent=(ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0).toFixed(2)+'%';
+  document.getElementById('lowCount').textContent=rows.filter(s=>totals(s).pct<80).length;
+}
+function renderCalendar(){
+  const m=monthSel.value,box=document.getElementById('calendar'),first=new Date(m+'-01T00:00:00');
+  const last=new Date(first.getFullYear(),first.getMonth()+1,0),selected=document.getElementById('studentSelect').value;
+  box.innerHTML='';
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(x=>box.insertAdjacentHTML('beforeend',`<div class="muted" style="text-align:center">${x}</div>`));
+  for(let i=0;i<first.getDay();i++)box.insertAdjacentHTML('beforeend','<div></div>');
+  for(let day=1;day<=last.getDate();day++){
+    const d=new Date(first.getFullYear(),first.getMonth(),day),iso=d.toISOString().slice(0,10);
+    if(d<START||d>END){box.insertAdjacentHTML('beforeend','<div class="day muted">—</div>');continue}
+    const st=(attendance[selected]||{})[iso]||'',hol=!!holidays[iso],cls=hol?'H':st;
+    const label=hol?'HOLIDAY':st==='P'?'PRESENT':st==='A'?'ABSENT':st==='L'?'LEAVE':'Mark';
+    box.insertAdjacentHTML('beforeend',`<div class="day ${cls}" onclick="selectDate('${iso}')"><b>${day}</b><button onclick="event.stopPropagation();setDay('${iso}')">${label}</button></div>`);
+  }
+  document.getElementById('selectedDateLabel').textContent=window.selectedDate?'Selected date: '+window.selectedDate+(holidays[window.selectedDate]?' (HOLIDAY)':''):'No date selected';
+}
+function selectDate(iso){window.selectedDate=iso;renderCalendar();}
+function setDay(iso){
+  const sid=document.getElementById('studentSelect').value;if(!sid)return;
+  if(holidays[iso]){alert('Holiday: remove holiday before attendance entry.');return}
+  const v=prompt('P=Present, A=Absent, L=Leave, blank=clear');if(v===null)return;
+  const x=v.trim().toUpperCase();attendance[sid]=attendance[sid]||{};
+  if(['P','A','L'].includes(x))attendance[sid][iso]=x;else delete attendance[sid][iso];
+  save();window.selectedDate=iso;render();
+}
+function bulkEntry(v){
+  const iso=window.selectedDate;if(!iso){alert('Select a calendar date first.');return}
+  if(holidays[iso]){alert('Holiday selected. Remove holiday first.');return}
+  const rows=filtered();if(!rows.length){alert('No students match current filter.');return}
+  if(!confirm('Apply '+(v||'CLEAR')+' to ALL selected students on '+iso+'?'))return;
+  rows.forEach(s=>{attendance[s.enrolment]=attendance[s.enrolment]||{};if(v)attendance[s.enrolment][iso]=v;else delete attendance[s.enrolment][iso]});
+  save();render();
+}
+function toggleHoliday(){
+  const iso=window.selectedDate;if(!iso){alert('Select a calendar date first.');return}
+  if(!confirm('Mark '+iso+' as HOLIDAY and clear attendance for that date?'))return;
+  holidays[iso]=true;STUDENTS.forEach(s=>{if(attendance[s.enrolment])delete attendance[s.enrolment][iso]});save();render();
+}
+function clearHoliday(){
+  const iso=window.selectedDate;if(!iso)return;
+  delete holidays[iso];save();render();
+}
+function markSelected(v){
+  const sid=document.getElementById('studentSelect').value;if(!sid)return;
+  const m=monthSel.value; const d=new Date(m+'-01T00:00:00'); const today=new Date();
+  const iso=today.toISOString().slice(0,10);
+  if(today>=START&&today<=END&&keyMonth(today)===m){attendance[sid]=attendance[sid]||{};if(v)attendance[sid][iso]=v;else delete attendance[sid][iso];save();render();}
+  else alert('Open the required month and use a calendar date to mark attendance.');
+}
+function populateStudents(){
+  const sel=document.getElementById('studentSelect'), cur=sel.value, rows=filtered();
+  sel.innerHTML=rows.map(s=>`<option value="${escAttr(s.enrolment)}">${esc(s.name)} — ${esc(s.enrolment)}</option>`).join('');
+  if(rows.some(s=>s.enrolment===cur))sel.value=cur;
+}
+function render(){renderMonthSettings();populateStudents();renderCalendar();renderSummary()}
+function resetAttendance(){if(confirm('Delete all attendance data and restore monthly working-day settings?')){attendance={};holidays={};localStorage.removeItem(STORE);localStorage.removeItem(STORE+'_holidays');workingDays={};MONTHS.forEach(m=>workingDays[m]=(m==='2026-08'||m==='2026-09')?10:0);save();render()}}
+function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function escAttr(x){return esc(x).replace(/`/g,'&#96;')}
+
+function exportExcel(){
+  const rows=filtered();if(!rows.length){alert('No students match filter.');return}
+  if(typeof XLSX==='undefined'){alert('Excel library not loaded. Internet connection is required for export.');return}
+  const out=rows.map((s,i)=>{
+    let cw=0,cp=0,r={'Sr No':i+1,'Student Name':s.name,'Enrolment No':s.enrolment,'Trade':s.trade};
+    MONTHS.forEach(m=>{
+      const hd=Object.keys(holidays).filter(d=>d.startsWith(m)).length,wd=Math.max(0,(+workingDays[m]||0)-hd);
+      let p=0;for(const d of Object.keys(attendance[s.enrolment]||{}))if(d.startsWith(m)&&attendance[s.enrolment][d]==='P'&&!holidays[d])p++;
+      cw+=wd;cp+=p;r[monthLabel(m)+' Working Day']=cw;r[monthLabel(m)+' Present Day']=cp;r[monthLabel(m)+' Percentage']=cw?+(cp/cw*100).toFixed(2):0;
+    });
+    r['Total Working Day']=cw;r['Present Day']=cp;r['Percentage']=cw?+(cp/cw*100).toFixed(2):0;return r;
+  });
+  const ws=XLSX.utils.json_to_sheet(out);ws['!autofilter']={ref:ws['!ref']};
+  ws['!cols']=Object.keys(out[0]).map(k=>({wch:Math.max(12,Math.min(28,k.length+2))}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Attendance Summary');
+  XLSX.writeFile(wb,`ITI_Attendance_${monthLabel(monthSel.value).replace(/ /g,'_')}.xlsx`);
+}
+document.getElementById('search').oninput=render;
+tradeSel.onchange=render;
+monthSel.onchange=renderCalendar;
+document.getElementById('studentSelect').onchange=renderCalendar;
+render();
+</script>
+</body>
+</html>
